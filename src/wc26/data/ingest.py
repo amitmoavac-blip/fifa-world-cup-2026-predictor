@@ -12,6 +12,8 @@ matches decided on penalties (whose recorded score is therefore a draw).
 """
 from __future__ import annotations
 
+import json
+import re
 import urllib.request
 from pathlib import Path
 
@@ -84,6 +86,32 @@ def _clean_goalscorers(path: Path) -> pd.DataFrame:
     return df.rename(columns={"home_team": "home", "away_team": "away"})
 
 
+def _team_name(t) -> str:
+    return canonical(t["name"] if isinstance(t, dict) else t)
+
+
+def _clean_schedule(path: Path) -> pd.DataFrame:
+    """Parse openfootball worldcup.json into a fixtures table with group +
+    matchday labels (the martj42 results carry neither)."""
+    data = json.loads(path.read_text())
+    rows = []
+    for m in data["matches"]:
+        rnd = m.get("round", "")
+        md = None
+        if (hit := re.search(r"Matchday (\d)", rnd)):
+            md = int(hit.group(1))
+        rows.append({
+            "date": pd.Timestamp(m["date"]),
+            "home": _team_name(m["team1"]),
+            "away": _team_name(m["team2"]),
+            "group": m.get("group"),
+            "matchday": md,
+            "round": rnd,
+            "ground": m.get("ground"),
+        })
+    return pd.DataFrame(rows).sort_values("date").reset_index(drop=True)
+
+
 def run(force_download: bool = False) -> dict[str, int]:
     download(force=force_download)
     out = processed_dir()
@@ -92,11 +120,16 @@ def run(force_download: bool = False) -> dict[str, int]:
     matches = _clean_results(raw_dir() / "results.csv")
     shootouts = _clean_shootouts(raw_dir() / "shootouts.csv")
     scorers = _clean_goalscorers(raw_dir() / "goalscorers.csv")
+    schedule = _clean_schedule(raw_dir() / "worldcup2026.json")
 
     matches.to_parquet(out / "matches.parquet", index=False)
     shootouts.to_parquet(out / "shootouts.parquet", index=False)
     scorers.to_parquet(out / "goalscorers.parquet", index=False)
-    return {"matches": len(matches), "shootouts": len(shootouts), "goalscorers": len(scorers)}
+    schedule.to_parquet(out / "wc2026_schedule.parquet", index=False)
+    return {
+        "matches": len(matches), "shootouts": len(shootouts),
+        "goalscorers": len(scorers), "wc2026_fixtures": len(schedule),
+    }
 
 
 def load_matches(played_only: bool = True) -> pd.DataFrame:
@@ -110,3 +143,7 @@ def load_shootouts() -> pd.DataFrame:
 
 def load_goalscorers() -> pd.DataFrame:
     return pd.read_parquet(processed_dir() / "goalscorers.parquet")
+
+
+def load_schedule() -> pd.DataFrame:
+    return pd.read_parquet(processed_dir() / "wc2026_schedule.parquet")

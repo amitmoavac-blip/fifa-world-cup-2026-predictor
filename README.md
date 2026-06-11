@@ -79,12 +79,23 @@ medium → 14.4%, low → 5.9%. (Counter-intuitively, a *very* high modal
 probability marks a blowout favourite whose exact margin is inherently
 uncertain — those are labelled low.)
 
+## Qualification-scenario engine (matchday 3)
+
+`wc26.features.incentives` reconstructs group standings from results and
+classifies each team's matchday-3 situation (secured top-2 / contention /
+third-place contention / eliminated) under the 2026 format (top 2 + 8 best
+thirds). It powers a dead-rubber flag and the analyst explanation; it is
+deliberately *not* fed as a fitted goal feature, since the Layer-2 ablation
+showed goal-based context features add nothing and we don't overclaim.
+
 ## Roadmap
 
-Per [docs/PLAN.md](docs/PLAN.md): Layer-2 context GLM (rest/travel/altitude/
-incentives), calibration scalars, fitted ET intensity, the qualification-
-scenario incentive engine for MD3, then the minute-by-minute simulator that
-becomes the live in-match engine, and player/lineup-level adjustments.
+Done: extra-time κ fit, calibration scalars, Layer-2 GLM (measured null for
+goal-based features), qualification-scenario engine. Next per
+[docs/PLAN.md](docs/PLAN.md): the minute-by-minute simulator that becomes the
+live in-match engine, then Tier-B features that should make Layer-2 earn its
+place — xG-residual form and lineup/player-quality adjustments — plus
+venue/altitude context for the 2026 host cities.
 
 ## Data
 

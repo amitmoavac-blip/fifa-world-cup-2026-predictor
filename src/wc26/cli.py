@@ -73,25 +73,43 @@ def predict(
 
     from wc26.adjust.glm import load_glm
     from wc26.calibrate.scalars import load_calibration
+    from wc26.data import ingest as ing2
     from wc26.features import context
+    from wc26.features.incentives import match_incentives
 
     f = dc.fit(history, asof=ts, cfg=dc_config_from_yaml(model_cfg))
     cal = load_calibration()
     glm = load_glm() if model_cfg.get("adjust", {}).get("use_glm", False) else None
+    try:
+        schedule = ing2.load_schedule()
+    except FileNotFoundError:
+        schedule = None
     knockout = ts >= pd.Timestamp(wc["knockout_start"])
     for _, m in fixtures.iterrows():
         feats = context.match_features(history, f, m.home, m.away, ts) if glm else None
         pred = predict_match(
             f, m.home, m.away, bool(m.home_at_home), knockout, model_cfg, cal, glm, feats
         )
+        why = pred["explanation"]
+        if schedule is not None:
+            inc = match_incentives(history, schedule, m.home, m.away, ts)
+            pred["stage"] = inc["stage"]
+            pred["dead_rubber"] = inc["dead_rubber"]
+            informative = {"secured_top2", "eliminated", "third_contention"}
+            if inc["dead_rubber"]:
+                why += " Dead rubber: both sides' group fate is settled, so intensity may drop."
+            elif informative & {inc.get("status_home"), inc.get("status_away")}:
+                why += (f" Group state: {m.home}={inc.get('status_home')}, "
+                        f"{m.away}={inc.get('status_away')}.")
         typer.echo(
             f"\n{m.home} vs {m.away}  ({m.city})\n"
             f"  Predicted final score : {m.home} {pred['modal_score'].replace('-', ' - ')} {m.away}\n"
             f"  Confidence            : {pred['confidence']} "
             f"(modal probability {pred['modal_prob']:.1%})\n"
-            f"  Why                   : {pred['explanation']}"
+            f"  Why                   : {why}"
         )
         if snapshot:
+            pred["explanation"] = why
             write_snapshot(pred, epoch="pre_lineup")
 
 
