@@ -1,0 +1,6 @@
+# FIFA World Cup 2026 facts (encoded as config, plan section 3).
+tournament: FIFA World Cup
+first_match: 2026-06-11
+knockout_start: 2026-06-28        # Round of 32
+final: 2026-07-19
+hosts: [United States, Canada, Mexico]

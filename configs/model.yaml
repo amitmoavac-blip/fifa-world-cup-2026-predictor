@@ -1,0 +1,45 @@
+# Layer-1 Dixon-Coles model configuration.
+dixon_coles:
+  halflife_years: 2.5          # time-decay half-life; grid-searched in backtest
+  max_age_years: 20.0          # drop matches older than this at fit time
+  min_weight: 0.001            # drop rows whose decay*importance weight falls below this
+  ridge_team_offset: 5.0       # shrinkage of team offsets toward confederation mean
+  ridge_confed: 0.5            # weak shrinkage of confederation means toward zero
+  rho_bounds: [-0.18, 0.18]    # Dixon-Coles low-score parameter box
+  goal_cap_train: 10           # clip training goals (31-0 qualifiers must not dominate)
+
+# Information weight per match-importance class (how much a match teaches us).
+importance_weights:
+  world_cup: 1.30
+  continental_finals: 1.25
+  qualifier: 1.00
+  nations_league: 0.70
+  minor: 0.50
+  friendly: 0.40
+
+scoreline:
+  max_goals: 10                # score-matrix grid cap; tail mass folded into top bin
+  mu_cap: 4.5                  # blowout guard on expected goals
+  et_kappa: 0.90               # ET per-minute intensity multiplier (prior; fitted in milestone 2)
+
+selection:
+  tie_epsilon: 0.005
+  # Confidence is an interval band, tuned on the backtest: very high modal
+  # probability means a blowout favourite whose exact margin is inherently
+  # uncertain (realized hit 3.8%), the mid band is the sweet spot (~17.5%),
+  # flat distributions below are genuine low-information matches.
+  confidence_bands:
+    high: [0.15, 0.19]         # modal prob in [lo, hi) -> high
+    low_below: 0.10            # modal prob under this -> low
+    low_above: 0.19            # modal prob at/over this (blowout regime) -> low
+
+elo:
+  init_rating: 1500.0
+  home_advantage: 100.0
+  k_factors:
+    world_cup: 60.0
+    continental_finals: 50.0
+    qualifier: 40.0
+    nations_league: 40.0
+    minor: 30.0
+    friendly: 20.0

@@ -1,0 +1,13 @@
+# Walk-forward backtest configuration.
+# Hyperparameters may only be selected on the selection set (<= 2019);
+# the holdout set is the untouched final test (plan section 9).
+selection_tournaments:
+  [wc2006, wc2010, wc2014, wc2018, euro2008, euro2012, euro2016, copa2015, copa2016, copa2019]
+holdout_tournaments:
+  [euro2020, copa2021, wc2022, euro2024, copa2024]
+
+halflife_grid: [1.5, 2.5, 4.0]
+
+# Refit Layer 1 before each match date within a tournament (mirrors live
+# operation, warm-started). "tournament" = single fit at tournament start.
+refit: per_date
