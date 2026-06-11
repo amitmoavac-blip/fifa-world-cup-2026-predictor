@@ -77,6 +77,7 @@ def run_tournament(
     dc_cfg: dc.DCConfig,
     model_cfg: dict,
     refit: str = "per_date",
+    calibration: dict | None = None,
 ) -> pd.DataFrame:
     tmatches = tournament_matches(matches, trow)
     sc = model_cfg["scoreline"]
@@ -93,8 +94,14 @@ def run_tournament(
             hg, ag = int(m.hg), int(m.ag)
             ko = bool(m.knockout)
 
-            pred = predict_match(fit_obj, m.home, m.away, bool(m.home_at_home), ko, model_cfg)
-            rec = {"system": "dc_model", **match_record(pred, hg, ag)}
+            pred = predict_match(
+                fit_obj, m.home, m.away, bool(m.home_at_home), ko, model_cfg, calibration
+            )
+            rec = {
+                "system": "dc_model",
+                "lam": pred["lam"], "mu": pred["mu"], "rho": pred["rho"],
+                **match_record(pred, hg, ag),
+            }
 
             elo_pred = bl.elo_poisson_predict(
                 elo_model, m.elo_home, m.elo_away, bool(m.home_at_home), ko,
@@ -126,6 +133,7 @@ def run_backtest(
     halflife: float | None = None,
     refit: str = "per_date",
     verbose: bool = True,
+    calibration: dict | None = None,
 ) -> pd.DataFrame:
     model_cfg = load_model_config()
     bt_cfg = load_backtest_config()
@@ -140,7 +148,7 @@ def run_backtest(
     for key in keys:
         trow = tcfg.loc[key]
         trow.name = key
-        df = run_tournament(matches, trow, dc_cfg, model_cfg, refit=refit)
+        df = run_tournament(matches, trow, dc_cfg, model_cfg, refit=refit, calibration=calibration)
         if verbose:
             model_rows = df[df.system == "dc_model"]
             print(

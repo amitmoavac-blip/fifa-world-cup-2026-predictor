@@ -71,10 +71,13 @@ def predict(
         typer.echo(f"no scheduled WC 2026 fixtures on {ts.date()} (re-run `wc26 ingest --force`?)")
         raise typer.Exit(1)
 
+    from wc26.calibrate.scalars import load_calibration
+
     f = dc.fit(history, asof=ts, cfg=dc_config_from_yaml(model_cfg))
+    cal = load_calibration()
     knockout = ts >= pd.Timestamp(wc["knockout_start"])
     for _, m in fixtures.iterrows():
-        pred = predict_match(f, m.home, m.away, bool(m.home_at_home), knockout, model_cfg)
+        pred = predict_match(f, m.home, m.away, bool(m.home_at_home), knockout, model_cfg, cal)
         typer.echo(
             f"\n{m.home} vs {m.away}  ({m.city})\n"
             f"  Predicted final score : {m.home} {pred['modal_score'].replace('-', ' - ')} {m.away}\n"
@@ -105,22 +108,48 @@ def fit_kappa(knockout_rate: float = typer.Option(2.5, help="assumed regulation 
 
 
 @app.command()
+def calibrate():
+    """Fit the three calibration scalars on the SELECTION tournaments only
+    (holdout stays out of the fit) and write data/processed/calibration.json."""
+    from wc26.backtest import walkforward as wf
+    from wc26.calibrate.scalars import fit_calibration, save_calibration
+
+    model_cfg = wf.load_model_config()
+    bt_cfg = wf.load_backtest_config()
+    sc = model_cfg["scoreline"]
+    records = wf.run_backtest(keys=bt_cfg["selection_tournaments"], refit="per_date", verbose=False)
+    preds = records[(records.system == "dc_model")]
+    cal = fit_calibration(preds, sc["max_goals"], sc["et_kappa"], sc["mu_cap"])
+    save_calibration({k: cal[k] for k in ("c_cal", "T", "rho_cal")})
+    typer.echo(
+        f"fitted on {cal['n_fit']} selection-set matches:\n"
+        f"  c_cal={cal['c_cal']}  T={cal['T']}  rho_cal={cal['rho_cal']}\n"
+        f"  pooled scoreline NLL {cal['nll_before']} -> {cal['nll_after']}"
+    )
+
+
+@app.command()
 def backtest(
     tournaments: str = typer.Option("", help="comma-separated keys; default = all configured"),
     tune: bool = typer.Option(True, help="grid-search half-life on the selection set first"),
     refit: str = typer.Option("per_date", help="per_date | tournament"),
+    calibrated: bool = typer.Option(False, help="apply saved calibration scalars"),
 ):
     """Run the walk-forward backtest and write reports/backtest_report.md."""
     from wc26.backtest import walkforward as wf
     from wc26.backtest.report import write_report
+    from wc26.calibrate.scalars import load_calibration
 
     grid = None
     halflife = None
     if tune:
         halflife, grid = wf.select_halflife()
         typer.echo(f"selected halflife={halflife}")
+    cal = load_calibration() if calibrated else None
+    if calibrated:
+        typer.echo(f"applying calibration: {cal}")
     keys = [k.strip() for k in tournaments.split(",") if k.strip()] or None
-    records = wf.run_backtest(keys=keys, halflife=halflife, refit=refit)
+    records = wf.run_backtest(keys=keys, halflife=halflife, refit=refit, calibration=cal)
     text = write_report(records, grid)
     typer.echo(text)
 

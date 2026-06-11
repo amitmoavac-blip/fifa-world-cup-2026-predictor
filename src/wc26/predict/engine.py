@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from wc26.calibrate.scalars import apply_calibration
 from wc26.predict.explain import build_explanation
 from wc26.predict.select import confidence_label, select_score, top_scores
 from wc26.ratings.dixon_coles import DCFit
@@ -27,6 +28,7 @@ def predict_match(
     home_at_home: bool,
     knockout: bool,
     cfg: dict,
+    calibration: dict | None = None,
 ) -> dict:
     sc = cfg.get("scoreline", {})
     sel = cfg.get("selection", {})
@@ -35,10 +37,11 @@ def predict_match(
     kappa = float(sc.get("et_kappa", 0.9))
 
     lam_raw, mu_raw = fit.rates(home, away, home_at_home)
-    lam, mu = min(lam_raw, mu_cap), min(mu_raw, mu_cap)
-    capped = (lam_raw > mu_cap) or (mu_raw > mu_cap)
+    lam_cal, mu_cal, rho = apply_calibration(lam_raw, mu_raw, fit.rho, calibration)
+    lam, mu = min(lam_cal, mu_cap), min(mu_cal, mu_cap)
+    capped = (lam_cal > mu_cap) or (mu_cal > mu_cap)
 
-    m90 = score_matrix(lam, mu, fit.rho, max_goals)
+    m90 = score_matrix(lam, mu, rho, max_goals)
     p_draw_90 = draw_prob_after_90(m90)
     matrix = et_convolve(m90, lam, mu, kappa) if knockout else m90
 
@@ -55,6 +58,7 @@ def predict_match(
         "knockout": knockout,
         "lam": lam,
         "mu": mu,
+        "rho": rho,
         "host_boost": float(np.expm1(fit.h)) if home_at_home else 0.0,
         "p_draw_90": p_draw_90,
         "et_xg": kappa * (lam + mu) / 3.0 if knockout else 0.0,
