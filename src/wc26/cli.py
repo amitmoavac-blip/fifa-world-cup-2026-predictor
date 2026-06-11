@@ -86,6 +86,24 @@ def predict(
             write_snapshot(pred, epoch="pre_lineup")
 
 
+@app.command(name="fit-kappa")
+def fit_kappa(knockout_rate: float = typer.Option(2.5, help="assumed regulation rate for ET-bound matches")):
+    """Estimate the extra-time intensity multiplier from goal-minute data."""
+    from wc26.data import ingest as ing
+    from wc26.scoreline.extra_time import fit_kappa as _fit
+
+    res = _fit(ing.load_matches(), ing.load_goalscorers(), ing.load_shootouts(), knockout_rate)
+    typer.echo(
+        f"ET kappa from {res.n_matches} complete extra-time matches "
+        f"({res.et_goals_per_match:.3f} ET goals/match):\n"
+        f"  self-normalized (upper) : {res.kappa_self_normalized:.3f}\n"
+        f"  population baseline (lower): {res.kappa_population:.3f}\n"
+        f"  match-rate synthesis (used): {res.kappa_match_rate:.3f}  "
+        f"(assumed knockout rate {res.assumed_knockout_rate})\n"
+        f"  -> configs/model.yaml uses scoreline.et_kappa = 0.90"
+    )
+
+
 @app.command()
 def backtest(
     tournaments: str = typer.Option("", help="comma-separated keys; default = all configured"),

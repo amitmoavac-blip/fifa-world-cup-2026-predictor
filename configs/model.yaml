@@ -20,7 +20,11 @@ importance_weights:
 scoreline:
   max_goals: 10                # score-matrix grid cap; tail mass folded into top bin
   mu_cap: 4.5                  # blowout guard on expected goals
-  et_kappa: 0.90               # ET per-minute intensity multiplier (prior; fitted in milestone 2)
+  # ET per-minute intensity multiplier. Fitted from goal-minute data on 268
+  # complete extra-time matches (`wc26 fit-kappa`): bracketed by 0.76
+  # (population baseline) and 1.09 (self-normalized); match-rate synthesis
+  # ~0.94. 0.90 is the defensible central value.
+  et_kappa: 0.90
 
 selection:
   tie_epsilon: 0.005

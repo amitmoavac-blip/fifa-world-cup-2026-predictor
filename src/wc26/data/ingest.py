@@ -106,3 +106,7 @@ def load_matches(played_only: bool = True) -> pd.DataFrame:
 
 def load_shootouts() -> pd.DataFrame:
     return pd.read_parquet(processed_dir() / "shootouts.parquet")
+
+
+def load_goalscorers() -> pd.DataFrame:
+    return pd.read_parquet(processed_dir() / "goalscorers.parquet")
