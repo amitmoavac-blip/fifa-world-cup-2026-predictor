@@ -14,6 +14,7 @@ dependencies = [
     "pyarrow>=14",
     "typer>=0.9",
     "pyyaml>=6.0",
+    "flask>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +25,9 @@ wc26 = "wc26.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"wc26.ui" = ["templates/*.html", "static/*.css"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

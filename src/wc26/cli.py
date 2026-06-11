@@ -237,5 +237,37 @@ def report():
     typer.echo(write_report(records))
 
 
+@app.command(name="build-ui-data")
+def build_ui_data(asof: str = typer.Option("today", help="prediction as-of date for upcoming matches")):
+    """Build the read-only prediction artifact the web UI serves."""
+    from wc26.ui.build import build_artifact
+
+    art = build_artifact(asof=_resolve_date(asof))
+    typer.echo(
+        f"built {art['n_predicted']} predicted fixtures (+{len(art['matches']) - art['n_predicted']} "
+        f"pending knockout slots)\n  model {art['model_version']} · calibration "
+        f"{'on' if art['calibration_active'] else 'off'} · glm {'on' if art['glm_active'] else 'off'}\n"
+        f"  -> data/processed/ui_predictions.json"
+    )
+
+
+@app.command()
+def serve(
+    port: int = typer.Option(8000, help="port to bind"),
+    host: str = typer.Option("127.0.0.1", help="host to bind"),
+    rebuild: bool = typer.Option(False, help="rebuild the artifact before serving"),
+    asof: str = typer.Option("today", help="as-of date when (re)building"),
+):
+    """Run the analyst web UI (Flask dev server, read-only)."""
+    from wc26.ui.app import create_app
+    from wc26.ui.build import artifact_path, build_artifact
+
+    if rebuild or not artifact_path().exists():
+        build_artifact(asof=_resolve_date(asof))
+        typer.echo("artifact built")
+    typer.echo(f"serving WC26 analyst UI at http://{host}:{port}  (Ctrl-C to stop)")
+    create_app().run(host=host, port=port, debug=False)
+
+
 if __name__ == "__main__":
     app()

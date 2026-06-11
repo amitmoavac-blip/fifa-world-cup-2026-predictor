@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Evaluation · WC 2026 Exact-Score Predictor{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>Evaluation</h1>
+  <p class="sub">Walk-forward backtest over past tournaments. Read every number against the baselines.</p>
+</section>
+
+{% if not ev.available %}
+  <p class="muted">No backtest records found. Run <code>wc26 backtest --calibrated</code> first.</p>
+{% else %}
+<div class="note-box">{{ ev.note }}</div>
+
+{% for title, rows in ev.slices.items() %}
+<h2>{{ title }}</h2>
+<table class="eval">
+  <thead><tr>
+    <th>System</th><th class="num">N</th><th class="num">Exact hit</th><th class="num">Log loss</th>
+    <th class="num">Total-goals MAE</th><th class="num">Team-goals MAE</th><th class="num">Outcome acc</th>
+  </tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr {% if loop.first %}class="primary"{% endif %}>
+      <td>{{ r.label }}</td>
+      <td class="num">{{ r.n }}</td>
+      <td class="num">{{ '%.1f%%'|format(r.exact*100) }}</td>
+      <td class="num">{{ '%.3f'|format(r.logloss) }}</td>
+      <td class="num">{{ '%.2f'|format(r.total_mae) }}</td>
+      <td class="num">{{ '%.2f'|format(r.team_mae) }}</td>
+      <td class="num">{{ '%.1f%%'|format(r.outcome*100) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endfor %}
+
+<h2>Confidence calibration (model)</h2>
+<table class="eval narrow">
+  <thead><tr><th>Label</th><th class="num">N</th><th class="num">Realized exact-hit rate</th></tr></thead>
+  <tbody>
+    {% for c in ev.confidence %}
+    <tr><td>{{ c.label }}</td><td class="num">{{ c.n }}</td><td class="num">{{ '%.1f%%'|format(c.hit*100) }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="muted small">Confidence bands are tuned to be monotone in realized hit rate; a very high modal probability marks a blowout favourite whose exact margin is uncertain, hence labelled low.</p>
+
+<h2>By tournament (model)</h2>
+<table class="eval">
+  <thead><tr><th>Tournament</th><th class="num">N</th><th class="num">Exact hit</th><th class="num">Log loss</th><th class="num">Outcome acc</th></tr></thead>
+  <tbody>
+    {% for t in ev.by_tournament %}
+    <tr><td>{{ t.tournament }}</td><td class="num">{{ t.n }}</td>
+      <td class="num">{{ '%.1f%%'|format(t.exact*100) }}</td>
+      <td class="num">{{ '%.3f'|format(t.logloss) }}</td>
+      <td class="num">{{ '%.1f%%'|format(t.outcome*100) }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Experimental layers (currently disabled)</h2>
+<div class="experimental">
+  {% for l in ev.experimental %}
+  <div class="exp-item">
+    <div class="exp-head"><strong>{{ l.name }}</strong> <span class="chip status-disabled">{{ l.status }}</span></div>
+    <p>{{ l.finding }}</p>
+  </div>
+  {% endfor %}
+</div>
+<p class="muted small">Layers are kept off until they demonstrably improve held-out performance — features are not shipped on intuition alone.</p>
+{% endif %}
+{% endblock %}

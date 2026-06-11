@@ -1,4 +1,4 @@
-.PHONY: install ingest fit predict backtest report test
+.PHONY: install ingest fit predict backtest report test ui serve
 
 install:
 	pip install -e ".[dev]"
@@ -20,3 +20,9 @@ report:
 
 test:
 	python -m pytest -q
+
+ui:
+	python -m wc26.cli build-ui-data
+
+serve:
+	python -m wc26.cli serve --rebuild --port $(or $(PORT),8000)

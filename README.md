@@ -25,12 +25,35 @@ risks) is in [docs/PLAN.md](docs/PLAN.md).
 ## Quickstart
 
 ```bash
-make install     # pip install -e ".[dev]"
+make install     # pip install -e ".[dev]"  (includes Flask for the UI)
 make ingest      # download + clean the open datasets (martj42, openfootball)
-make test        # 20 tests: leakage guards, label regression, gradient checks
+make test        # full test suite: leakage guards, label regression, gradient + UI checks
 make backtest    # walk-forward backtest 2006-2024 -> reports/backtest_report.md
 wc26 predict --date 2026-06-11   # predict that day's WC 2026 fixtures
+make serve       # build the prediction artifact + launch the analyst UI at :8000
 ```
+
+## Analyst UI
+
+A thin, read-only Flask app for viewing and evaluating predictions — professional
+and narrow by design (one exact score per match, never a betting/dashboard app).
+
+```bash
+wc26 build-ui-data        # fit once, predict all fixtures -> data/processed/ui_predictions.json
+wc26 serve                # http://127.0.0.1:8000  (use --rebuild to refresh the artifact)
+```
+
+Four pages: **Matches** (all 104 fixtures, filterable by status/stage/team/
+confidence; predicted score, confidence, status, actual + exact-hit when played),
+**Match detail** (predicted score front-and-centre, explanation, collapsible
+analyst section with expected goals + top-5 internal scorelines + extra-time
+handling, and a per-match prediction-history timeline), **Evaluation** (model vs
+baselines by stage/holdout, confidence calibration, and the *disabled*
+experimental layers with their measured null results), and **Data health** (sync
+times, source status, and an explicit "live/lineup data: not configured"). The UI
+reads a precomputed artifact, so the engine stays the single source of truth and
+freshness is honest. Uncertainty (stale ratings, capped blowouts, dead rubbers)
+is surfaced, never hidden.
 
 ## How it works (Phase 1)
 

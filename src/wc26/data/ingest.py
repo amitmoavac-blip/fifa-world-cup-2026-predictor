@@ -102,6 +102,7 @@ def _clean_schedule(path: Path) -> pd.DataFrame:
             md = int(hit.group(1))
         rows.append({
             "date": pd.Timestamp(m["date"]),
+            "time": m.get("time"),
             "home": _team_name(m["team1"]),
             "away": _team_name(m["team2"]),
             "group": m.get("group"),

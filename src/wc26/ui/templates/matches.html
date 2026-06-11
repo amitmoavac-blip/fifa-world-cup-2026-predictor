@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import confidence_badge, score_pair, status_chip %}
+{% block title %}Matches · WC 2026 Exact-Score Predictor{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>Matches</h1>
+  <p class="sub">{{ artifact.n_predicted }} predicted fixtures · all predictions pre-match (as of {{ artifact.asof }})</p>
+</section>
+
+<form class="filters" method="get" action="{{ url_for('matches') }}">
+  <label>Status
+    <select name="status" onchange="this.form.submit()">
+      <option value="">all</option>
+      {% for s in ['upcoming','live','completed','pending'] %}
+        <option value="{{ s }}" {{ 'selected' if filters.status==s }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Stage
+    <select name="stage" onchange="this.form.submit()">
+      <option value="">all</option>
+      <option value="group" {{ 'selected' if filters.stage=='group' }}>group</option>
+      <option value="knockout" {{ 'selected' if filters.stage=='knockout' }}>knockout</option>
+    </select>
+  </label>
+  <label>Confidence
+    <select name="confidence" onchange="this.form.submit()">
+      <option value="">all</option>
+      {% for c in ['high','medium','low'] %}
+        <option value="{{ c }}" {{ 'selected' if filters.confidence==c }}>{{ c }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Team
+    <input type="text" name="team" value="{{ filters.team }}" list="teamlist" placeholder="any team">
+    <datalist id="teamlist">{% for t in teams %}<option value="{{ t }}">{% endfor %}</datalist>
+  </label>
+  <button type="submit">Filter</button>
+  <a class="clear" href="{{ url_for('matches') }}">Clear</a>
+</form>
+
+<p class="count">{{ matches | length }} match{{ '' if matches|length==1 else 'es' }}</p>
+
+<table class="matches">
+  <thead>
+    <tr>
+      <th>Date</th><th>Stage</th><th>Match</th><th class="num">Predicted</th>
+      <th>Confidence</th><th>Status</th><th class="num">Actual</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for m in matches %}
+    <tr>
+      <td class="nowrap">{{ m.date }}{% if m.time %}<span class="muted small"> {{ m.time }}</span>{% endif %}</td>
+      <td class="muted small">{{ m.stage }}</td>
+      <td class="match-cell"><a href="{{ url_for('match', match_id=m.id) }}">{{ m.home }} <span class="muted">v</span> {{ m.away }}</a></td>
+      <td class="num score">{{ score_pair(m.predicted_score) }}</td>
+      <td>{{ confidence_badge(m.confidence) }}</td>
+      <td>{{ status_chip(m.status) }}</td>
+      <td class="num score">{{ score_pair(m.actual) }}</td>
+      <td>
+        {% if m.exact_hit is not none %}
+          {% if m.exact_hit %}<span class="hit" title="exact score predicted">✓ exact</span>
+          {% else %}<span class="miss" title="exact score missed">✗ missed</span>{% endif %}
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

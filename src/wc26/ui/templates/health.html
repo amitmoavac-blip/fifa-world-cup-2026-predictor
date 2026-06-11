@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Data health · WC 2026 Exact-Score Predictor{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>Data health</h1>
+  <p class="sub">Whether the prediction data is fresh and trustworthy. Nothing hidden.</p>
+</section>
+
+{% if health.warnings %}
+<div class="warnings">
+  {% for w in health.warnings %}<div class="warn">⚠ {{ w }}</div>{% endfor %}
+</div>
+{% else %}
+<div class="ok-box">✓ No staleness or missing-data warnings.</div>
+{% endif %}
+
+<h2>Mode &amp; configuration</h2>
+<table class="eval narrow">
+  <tbody>
+    <tr><td>Data mode</td><td><strong>{{ health.mode }}</strong></td></tr>
+    <tr><td>Live data</td><td>{{ '✓ configured' if health.live_data_configured else '✗ not configured' }}</td></tr>
+    <tr><td>Lineup data</td><td>{{ '✓ configured' if health.lineup_data_configured else '✗ not configured' }}</td></tr>
+    <tr><td>Calibration applied</td><td>{{ '✓ active' if health.calibration_active else '✗ off' }}</td></tr>
+    <tr><td>Layer-2 GLM</td><td>{{ '✓ active' if health.glm_active else '✗ off (measured null)' }}</td></tr>
+    <tr><td>Model version</td><td><code>{{ health.model_version }}</code></td></tr>
+    <tr><td>Artifact built</td><td>{{ health.artifact_built or '—' }}</td></tr>
+    <tr><td>Processed data</td><td>{{ health.matches_processed or '—' }}</td></tr>
+    <tr><td>Snapshots logged</td><td>{{ health.snapshots }} (last {{ health.last_snapshot or '—' }})</td></tr>
+  </tbody>
+</table>
+
+<h2>Source status</h2>
+<table class="eval">
+  <thead><tr><th>Source</th><th>File</th><th>Last sync (UTC)</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for s in health.sources %}
+    <tr>
+      <td>{{ s.name }}</td>
+      <td class="muted small">{{ s.file }}</td>
+      <td class="nowrap">{{ (s.last_sync or '—')[:16] | replace('T',' ') }}</td>
+      <td>{% if s.status == 'ok' %}<span class="hit">✓ ok</span>{% else %}<span class="miss">{{ s.status }}</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="muted small">Live and lineup feeds are intentionally not configured — the system runs on free, historical sources only, so every prediction is pre-match.</p>
+{% endblock %}

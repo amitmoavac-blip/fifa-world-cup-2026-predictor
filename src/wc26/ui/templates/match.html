@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_macros.html" import confidence_badge, score_pair, status_chip %}
+{% block title %}{{ m.home }} v {{ m.away }} · WC 2026{% endblock %}
+{% block content %}
+<p class="back"><a href="{{ url_for('matches') }}">← all matches</a></p>
+
+<section class="match-head">
+  <div class="meta">
+    <span>{{ m.stage }}</span>
+    <span class="sep">·</span>
+    <span>{{ m.date }}{% if m.time %} · {{ m.time }}{% endif %}</span>
+    <span class="sep">·</span>
+    <span>{{ m.ground }}</span>
+    <span class="sep">·</span>
+    {{ status_chip(m.status) }}
+  </div>
+
+  {% if m.status == 'pending' %}
+    <h1 class="teams">{{ m.home }} <span class="muted">v</span> {{ m.away }}</h1>
+    <p class="pending-note">{{ m.explanation }}</p>
+  {% else %}
+    <h1 class="teams">{{ m.home }} <span class="muted">v</span> {{ m.away }}</h1>
+    <div class="predicted">
+      <div class="label">Predicted final score</div>
+      <div class="bigscore">{{ m.home }} <strong>{{ score_pair(m.predicted_score) }}</strong> {{ m.away }}</div>
+      <div class="under">
+        {{ confidence_badge(m.confidence) }} confidence
+        <span class="muted">· modal probability {{ '%.1f%%' | format(m.modal_prob * 100) }}</span>
+        <span class="muted">· mode: {{ m.prediction_mode }}</span>
+      </div>
+    </div>
+
+    {% if m.actual %}
+    <div class="actual-box {{ 'is-hit' if m.exact_hit else 'is-miss' }}">
+      Actual: <strong>{{ m.home }} {{ score_pair(m.actual) }} {{ m.away }}</strong>
+      — {{ 'exact score predicted' if m.exact_hit else 'exact score missed' }}
+    </div>
+    {% endif %}
+
+    {% set warns = [] %}
+    {% if m.stale %}{% set _ = warns.append('Limited recent data for one side — rating partly shrunk to confederation level.') %}{% endif %}
+    {% if m.mu_capped %}{% set _ = warns.append('Severe mismatch — expected goals capped; exact margin highly uncertain.') %}{% endif %}
+    {% if m.dead_rubber %}{% set _ = warns.append('Dead rubber — both sides’ group fate is settled; intensity may drop.') %}{% endif %}
+    {% if warns %}
+    <div class="warnings">
+      {% for w in warns %}<div class="warn">⚠ {{ w }}</div>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="explanation">
+      <h2>Why this score</h2>
+      <p>{{ m.explanation }}</p>
+    </div>
+
+    <details class="analyst" open>
+      <summary>Analyst details</summary>
+      <div class="grid">
+        <div><span class="k">Expected goals</span><span class="v">{{ m.home }} {{ '%.2f'|format(m.lam) }} · {{ m.away }} {{ '%.2f'|format(m.mu) }}</span></div>
+        <div><span class="k">Outcome split (W / D / L)</span><span class="v">{{ '%.0f%%'|format(m.p_home*100) }} / {{ '%.0f%%'|format(m.p_draw*100) }} / {{ '%.0f%%'|format(m.p_away*100) }}</span></div>
+        <div><span class="k">Target</span><span class="v">{{ '120-minute (extra time)' if m.is_knockout else '90 minutes + stoppage' }}</span></div>
+        {% if m.is_knockout %}
+        <div><span class="k">Extra time</span><span class="v">{{ '%.0f%%'|format(m.p_draw_90*100) }} chance level at 90′ · ET adds ~{{ '%.2f'|format(m.et_xg) }} xG (shootout excluded)</span></div>
+        {% endif %}
+        <div><span class="k">Prediction as of</span><span class="v">{{ m.pred_asof }}</span></div>
+      </div>
+      <h3>Top internal scorelines</h3>
+      <table class="topscores">
+        <thead><tr><th>Scoreline</th><th class="num">Probability</th></tr></thead>
+        <tbody>
+          {% for ts in m.top_scores %}
+          <tr {% if ts.score == m.predicted_score %}class="is-modal"{% endif %}>
+            <td>{{ score_pair(ts.score) }}</td>
+            <td class="num">{{ '%.1f%%'|format(ts.prob*100) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="muted small">The model evaluates the full scoreline distribution internally; only the single most likely score is the headline prediction.</p>
+    </details>
+  {% endif %}
+</section>
+
+{% if m.status != 'pending' %}
+<section class="history">
+  <h2>Prediction history</h2>
+  {% if history | length > 1 %}
+  <table class="history-table">
+    <thead><tr><th>When (UTC)</th><th>Epoch</th><th class="num">Predicted</th><th>Confidence</th><th class="num">Modal prob</th><th>Model</th></tr></thead>
+    <tbody>
+      {% for h in history %}
+      <tr>
+        <td class="nowrap">{{ (h.snapshot_ts or '')[:16] | replace('T',' ') }}</td>
+        <td>{{ h.epoch }}</td>
+        <td class="num score">{{ score_pair(h.modal_score) }}</td>
+        <td>{{ confidence_badge(h.confidence) }}</td>
+        <td class="num">{% if h.modal_prob %}{{ '%.1f%%'|format(h.modal_prob*100) }}{% endif %}</td>
+        <td class="muted small">{{ h.model_version }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">A single pre-match snapshot exists so far. History accumulates as the model is rebuilt day by day and ratings update.</p>
+  {% endif %}
+  <p class="muted small">Available epochs: <strong>pre-match</strong>. Lineup-adjusted and live epochs are <strong>not configured</strong> (no free lineup/live feed).</p>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,11 @@
+{% macro confidence_badge(c) %}
+  {% if c %}<span class="badge conf-{{ c }}">{{ c }}</span>{% else %}<span class="badge conf-none">—</span>{% endif %}
+{% endmacro %}
+
+{% macro score_pair(s) %}
+  {% if s %}{{ s.split('-')[0] }} <span class="dash">–</span> {{ s.split('-')[1] }}{% else %}<span class="muted">—</span>{% endif %}
+{% endmacro %}
+
+{% macro status_chip(status) %}
+  <span class="chip status-{{ status }}">{{ status }}</span>
+{% endmacro %}

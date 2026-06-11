@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}WC 2026 Exact-Score Predictor{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><a href="{{ url_for('matches') }}">WC&nbsp;2026 · Exact-Score Predictor</a></div>
+  <nav>
+    <a href="{{ url_for('matches') }}">Matches</a>
+    <a href="{{ url_for('evaluation') }}">Evaluation</a>
+    <a href="{{ url_for('health') }}">Data&nbsp;health</a>
+  </nav>
+  <div class="build-chip" title="Artifact build time / model version / data mode">
+    <span>built {{ artifact.build_ts[:16] | replace('T',' ') }} UTC</span>
+    <span class="sep">·</span>
+    <span>model {{ artifact.model_version }}</span>
+    <span class="sep">·</span>
+    <span class="mode">historical / cached</span>
+  </div>
+</header>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  <p>Single most-likely exact score per match. Internally probabilistic; the UI shows the modal scoreline.
+     Free / historical data sources only — <strong>live and lineup data are not configured</strong>,
+     so all predictions are pre-match. Uncertainty is shown, never hidden.</p>
+</footer>
+</body>
+</html>
