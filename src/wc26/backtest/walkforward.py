@@ -11,10 +11,12 @@ import numpy as np
 import pandas as pd
 import yaml
 
+from wc26.adjust.glm import GLMFit
 from wc26.backtest import baselines as bl
 from wc26.backtest.metrics import match_record
 from wc26.data import ingest
 from wc26.data.elo import compute_elo_history
+from wc26.features import context
 from wc26.paths import configs_dir, reports_dir
 from wc26.predict.engine import predict_match
 from wc26.ratings import dixon_coles as dc
@@ -78,6 +80,7 @@ def run_tournament(
     model_cfg: dict,
     refit: str = "per_date",
     calibration: dict | None = None,
+    glm: GLMFit | None = None,
 ) -> pd.DataFrame:
     tmatches = tournament_matches(matches, trow)
     sc = model_cfg["scoreline"]
@@ -94,12 +97,16 @@ def run_tournament(
             hg, ag = int(m.hg), int(m.ag)
             ko = bool(m.knockout)
 
+            feats = context.match_features(matches, fit_obj, m.home, m.away, date)
             pred = predict_match(
-                fit_obj, m.home, m.away, bool(m.home_at_home), ko, model_cfg, calibration
+                fit_obj, m.home, m.away, bool(m.home_at_home), ko, model_cfg,
+                calibration, glm=glm, features=feats,
             )
             rec = {
                 "system": "dc_model",
                 "lam": pred["lam"], "mu": pred["mu"], "rho": pred["rho"],
+                "rest_adv": feats["rest_adv"],
+                "form_home": feats["form_home"], "form_away": feats["form_away"],
                 **match_record(pred, hg, ag),
             }
 
@@ -134,6 +141,7 @@ def run_backtest(
     refit: str = "per_date",
     verbose: bool = True,
     calibration: dict | None = None,
+    glm: GLMFit | None = None,
 ) -> pd.DataFrame:
     model_cfg = load_model_config()
     bt_cfg = load_backtest_config()
@@ -148,7 +156,8 @@ def run_backtest(
     for key in keys:
         trow = tcfg.loc[key]
         trow.name = key
-        df = run_tournament(matches, trow, dc_cfg, model_cfg, refit=refit, calibration=calibration)
+        df = run_tournament(matches, trow, dc_cfg, model_cfg, refit=refit,
+                            calibration=calibration, glm=glm)
         if verbose:
             model_rows = df[df.system == "dc_model"]
             print(

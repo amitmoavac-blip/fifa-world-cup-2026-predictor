@@ -29,6 +29,8 @@ def predict_match(
     knockout: bool,
     cfg: dict,
     calibration: dict | None = None,
+    glm=None,
+    features: dict | None = None,
 ) -> dict:
     sc = cfg.get("scoreline", {})
     sel = cfg.get("selection", {})
@@ -36,7 +38,11 @@ def predict_match(
     mu_cap = float(sc.get("mu_cap", 4.5))
     kappa = float(sc.get("et_kappa", 0.9))
 
-    lam_raw, mu_raw = fit.rates(home, away, home_at_home)
+    lam_l1, mu_l1 = fit.rates(home, away, home_at_home)
+    if glm is not None and features is not None:
+        lam_raw, mu_raw = glm.adjust(lam_l1, mu_l1, features)
+    else:
+        lam_raw, mu_raw = lam_l1, mu_l1
     lam_cal, mu_cal, rho = apply_calibration(lam_raw, mu_raw, fit.rho, calibration)
     lam, mu = min(lam_cal, mu_cap), min(mu_cal, mu_cap)
     capped = (lam_cal > mu_cap) or (mu_cal > mu_cap)

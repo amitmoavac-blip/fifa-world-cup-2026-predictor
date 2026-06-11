@@ -37,6 +37,14 @@ selection:
     low_below: 0.10            # modal prob under this -> low
     low_above: 0.19            # modal prob at/over this (blowout regime) -> low
 
+# Layer-2 context GLM. Measured effect of the current Tier-A goal-based
+# features (rest, form-residual) is negligible in leave-one-tournament-out CV
+# (~0.05% per-side deviance), so it is OFF by default. The layer and its
+# pipeline are built and tested; flip this on when Tier-B xG/lineup features
+# (which the plan expects to carry the real gains) are added.
+adjust:
+  use_glm: false
+
 elo:
   init_rating: 1500.0
   home_advantage: 100.0

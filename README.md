@@ -50,17 +50,29 @@ wc26 predict --date 2026-06-11   # predict that day's WC 2026 fixtures
    leakage by construction (`asof` discipline everywhere, Elo recomputed
    in-repo, ET-score labels regression-tested against hand-checked matches).
 
-## Backtest results (679 tournament matches, walk-forward)
+## Backtest results (679 tournament matches, walk-forward, calibrated)
 
-| System | Exact-score hit | Score logloss | Outcome acc |
-|---|---|---|---|
-| **Dixon-Coles model** | **15.2%** (16.4% holdout) | **2.799** | 54.9% |
-| Elo-Poisson baseline | 15.5% (14.2% holdout) | 2.806 | 55.8% |
-| Constant modal score | 9.9% | 4.796 | 41.8% |
+| System | Exact-score hit | Score logloss | RPS (1X2) | Total-goals MAE |
+|---|---|---|---|---|
+| **Dixon-Coles model** | **15.8%** | **2.794** | **0.1941** | **1.51** |
+| Elo-Poisson baseline | 15.5% | 2.806 | 0.1944 | 1.53 |
+| Constant modal score | 9.9% | 4.796 | 0.2365 | 1.65 |
 
 Exact-score prediction has a hard ceiling (betting markets hit ~11-12%); read
-all numbers against baselines. The model leads on the untouched holdout set
-and on scoreline log loss everywhere. Full report: `reports/backtest_report.md`.
+all numbers against baselines. The calibrated model leads the Elo-Poisson
+baseline on every metric. Full report: `reports/backtest_report.md`.
+
+### What each layer buys (honest ablations)
+
+- **Calibration** (3 scalars): on the untouched holdout, log loss 2.780 → 2.776
+  and total-goals MAE 1.553 → 1.491. Modest and real.
+- **Extra-time κ**: fitted at ~0.90 from 268 complete-goal ET matches
+  (`wc26 fit-kappa`), confirming the prior rather than guessing.
+- **Layer-2 context GLM** (rest, form-residual): leave-one-tournament-out CV
+  shows **−0.05%** per-side deviance — negligible. International goal-based
+  context features don't move exact scores; the layer is built and tested as
+  the integration point for Tier-B xG/lineup features (off by default,
+  `adjust.use_glm` in `configs/model.yaml`).
 
 Confidence labels are calibrated and monotone: high → 17.5% realized hit,
 medium → 14.4%, low → 5.9%. (Counter-intuitively, a *very* high modal

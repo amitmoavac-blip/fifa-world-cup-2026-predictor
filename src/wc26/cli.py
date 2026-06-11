@@ -71,13 +71,19 @@ def predict(
         typer.echo(f"no scheduled WC 2026 fixtures on {ts.date()} (re-run `wc26 ingest --force`?)")
         raise typer.Exit(1)
 
+    from wc26.adjust.glm import load_glm
     from wc26.calibrate.scalars import load_calibration
+    from wc26.features import context
 
     f = dc.fit(history, asof=ts, cfg=dc_config_from_yaml(model_cfg))
     cal = load_calibration()
+    glm = load_glm() if model_cfg.get("adjust", {}).get("use_glm", False) else None
     knockout = ts >= pd.Timestamp(wc["knockout_start"])
     for _, m in fixtures.iterrows():
-        pred = predict_match(f, m.home, m.away, bool(m.home_at_home), knockout, model_cfg, cal)
+        feats = context.match_features(history, f, m.home, m.away, ts) if glm else None
+        pred = predict_match(
+            f, m.home, m.away, bool(m.home_at_home), knockout, model_cfg, cal, glm, feats
+        )
         typer.echo(
             f"\n{m.home} vs {m.away}  ({m.city})\n"
             f"  Predicted final score : {m.home} {pred['modal_score'].replace('-', ' - ')} {m.away}\n"
@@ -104,6 +110,34 @@ def fit_kappa(knockout_rate: float = typer.Option(2.5, help="assumed regulation 
         f"  match-rate synthesis (used): {res.kappa_match_rate:.3f}  "
         f"(assumed knockout rate {res.assumed_knockout_rate})\n"
         f"  -> configs/model.yaml uses scoreline.et_kappa = 0.90"
+    )
+
+
+@app.command(name="fit-glm")
+def fit_glm_cmd(ridge: float = typer.Option(100.0, help="ridge penalty (higher = more conservative)")):
+    """Fit the Layer-2 context GLM and report its leave-one-tournament-out CV.
+
+    Generates point-in-time features over all backtest tournaments (raw L1
+    offsets, no calibration), fits the constrained Poisson GLM, and saves it.
+    """
+    from wc26.adjust.glm import build_sideframe, fit_glm, loto_cv, save_glm
+    from wc26.backtest import walkforward as wf
+
+    records = wf.run_backtest(refit="per_date", verbose=False, calibration=None, glm=None)
+    model = records[records.system == "dc_model"]
+    sf = build_sideframe(model)
+    cv = loto_cv(sf, ridge=ridge)
+    fit = fit_glm(sf, ridge=ridge)
+    save_glm(fit)
+    typer.echo(
+        f"fitted on {fit.n_obs} team-side observations (ridge={ridge}):\n"
+        f"  coefficients: {{ {', '.join(f'{k}={v:+.4f}' for k, v in fit.coef.items())} }}\n"
+        f"  leave-one-tournament-out CV ({cv['n_obs']} obs):\n"
+        f"    per-side Poisson deviance  L1={cv['deviance_l1']}  GLM={cv['deviance_glm']}  "
+        f"({cv['deviance_delta_pct']:+.2f}%)\n"
+        f"    per-side goals MAE         L1={cv['mae_l1']}  GLM={cv['mae_glm']}\n"
+        f"  NOTE: Tier-A goal-based features (rest, form-residual) add little for\n"
+        f"  international football; this slot is built for Tier-B xG/lineup features."
     )
 
 
