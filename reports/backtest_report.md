@@ -1,8 +1,11 @@
 # Walk-forward backtest report
 
 Target: exact final score (90' group stage; 120' knockouts, shootouts excluded).
-Exact-score prediction has a hard ceiling — betting markets hit ~11-12%. Read
-every number against the baselines below, not against intuition (plan section 9).
+Exact-score prediction is inherently hard: the best *constant* guess (the
+historical modal score) lands ~10% here, so read every number against the
+baselines below, not against intuition. (A widely-cited rule of thumb puts
+strong models/markets in the low-to-mid teens, but we have no market-odds
+data in-repo to verify that, so treat it as context, not a measured ceiling.)
 
 ## All tournaments
 | System | N | Exact-score hit | Score logloss | RPS (1X2) | Outcome acc | Total-goals MAE | GD MAE |

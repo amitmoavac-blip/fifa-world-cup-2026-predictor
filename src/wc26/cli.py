@@ -131,6 +131,28 @@ def fit_kappa(knockout_rate: float = typer.Option(2.5, help="assumed regulation 
     )
 
 
+@app.command(name="ingest-xg")
+def ingest_xg(force: bool = typer.Option(False, help="re-download event data")):
+    """Download StatsBomb open-data xG for the 6 international tournaments."""
+    from wc26.data import statsbomb as sb
+
+    n = sb.run(force=force)
+    typer.echo(f"cached match-level xG for {n} matches -> data/processed/statsbomb_xg.parquet")
+
+
+@app.command(name="eval-xg")
+def eval_xg(ridge: float = typer.Option(30.0, help="Tier-B GLM ridge penalty")):
+    """Evaluate the Tier-B xG-form layer (LOTO CV) and write the report."""
+    from wc26.backtest import tier_b
+    from wc26.paths import reports_dir
+
+    records = tier_b.evaluate(ridge=ridge)
+    coef = tier_b.tier_b_coefficients(ridge=ridge)
+    text = tier_b.build_report(records, coef, ridge)
+    (reports_dir() / "tier_b_report.md").write_text(text)
+    typer.echo(text)
+
+
 @app.command(name="fit-glm")
 def fit_glm_cmd(ridge: float = typer.Option(100.0, help="ridge penalty (higher = more conservative)")):
     """Fit the Layer-2 context GLM and report its leave-one-tournament-out CV.

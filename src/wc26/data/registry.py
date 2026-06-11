@@ -27,6 +27,8 @@ ALIASES = {
     "Cabo Verde": "Cape Verde",
     "IR Iran": "Iran",
     "Bosnia-Herzegovina": "Bosnia and Herzegovina",
+    "Cape Verde Islands": "Cape Verde",
+    "Congo DR": "DR Congo",
     "St. Kitts and Nevis": "Saint Kitts and Nevis",
     "St. Lucia": "Saint Lucia",
     "St. Vincent and the Grenadines": "Saint Vincent and the Grenadines",

@@ -58,9 +58,12 @@ wc26 predict --date 2026-06-11   # predict that day's WC 2026 fixtures
 | Elo-Poisson baseline | 15.5% | 2.806 | 0.1944 | 1.53 |
 | Constant modal score | 9.9% | 4.796 | 0.2365 | 1.65 |
 
-Exact-score prediction has a hard ceiling (betting markets hit ~11-12%); read
-all numbers against baselines. The calibrated model leads the Elo-Poisson
-baseline on every metric. Full report: `reports/backtest_report.md`.
+Exact-score prediction is inherently hard — the best *constant* guess (the
+historical modal score) tops out near 10% in our data, so read all numbers
+against baselines, not intuition. (A common rule of thumb puts strong
+models/markets in the low-to-mid teens; we have no market-odds data in-repo to
+verify it, so it's context, not a measured ceiling.) The calibrated model leads
+the Elo-Poisson baseline on every metric. Full report: `reports/backtest_report.md`.
 
 ### What each layer buys (honest ablations)
 
@@ -71,8 +74,27 @@ baseline on every metric. Full report: `reports/backtest_report.md`.
 - **Layer-2 context GLM** (rest, form-residual): leave-one-tournament-out CV
   shows **−0.05%** per-side deviance — negligible. International goal-based
   context features don't move exact scores; the layer is built and tested as
-  the integration point for Tier-B xG/lineup features (off by default,
-  `adjust.use_glm` in `configs/model.yaml`).
+  the integration point for Tier-B features (off by default, `adjust.use_glm`).
+- **Tier-B xG-form** (StatsBomb open data, 6 tournaments): within-tournament,
+  opponent-adjusted xG residuals with the theoretically-correct coefficient
+  signs (chance creation persists `+`, finishing reverts `−`). LOTO-CV verdict:
+  exact-hit **unchanged** (16.0%), log loss flat-to-slightly-worse, total-goals
+  MAE marginally better (~0.01), a knockout-only hint (12.8%→14.0%, ~1 match).
+  The window (1–4 matches) is too short to move the exact-score distribution, so
+  this also ships **off by default** — a clean negative result with the pipeline
+  ready for broad-calendar xG. See `wc26 eval-xg` / `reports/tier_b_report.md`.
+
+### Why lineup / player-quality / injury features aren't here yet
+
+These were prioritized, but there is **no free, leakage-clean historical source**
+of (expected XI, actual XI, per-player quality, availability) across the
+international calendar. StatsBomb gives starting XIs for 6 tournaments but no
+player-quality metric, and joining Transfermarkt values historically is a
+fragile name-matching project with its own leakage risks. Per the evaluation
+gate — *don't keep features you can't validate* — these are deferred rather than
+shipped unproven. They become viable for **live** 2026 use (API-Football free
+tier provides confirmed lineups ~20–40 min pre-kickoff) and that is where they
+belong: the simulator/live phase, not the backtested pre-match model.
 
 Confidence labels are calibrated and monotone: high → 17.5% realized hit,
 medium → 14.4%, low → 5.9%. (Counter-intuitively, a *very* high modal
@@ -91,11 +113,13 @@ showed goal-based context features add nothing and we don't overclaim.
 ## Roadmap
 
 Done: extra-time κ fit, calibration scalars, Layer-2 GLM (measured null for
-goal-based features), qualification-scenario engine. Next per
-[docs/PLAN.md](docs/PLAN.md): the minute-by-minute simulator that becomes the
-live in-match engine, then Tier-B features that should make Layer-2 earn its
-place — xG-residual form and lineup/player-quality adjustments — plus
-venue/altitude context for the 2026 host cities.
+goal-based features), qualification-scenario engine, Tier-B xG-form layer
+(measured null over the short within-tournament window; pipeline ready for
+broad-calendar xG). Next per [docs/PLAN.md](docs/PLAN.md): the minute-by-minute
+simulator that becomes the live in-match engine, with lineup/availability
+features entering there (live data, not backtestable history). A broad-calendar
+xG source (e.g. FBref) remains the most promising path to make Tier-B earn its
+place in the pre-match model.
 
 ## Data
 
